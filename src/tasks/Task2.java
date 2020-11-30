@@ -21,7 +21,7 @@ public class Task2 implements Task {
                                                       Collection<Person> persons2,
                                                       int limit) {
     List<Person> sortedPerson = Stream.concat(persons1.stream(), persons2.stream())
-            .collect(Collectors.toList());;
+            .collect(Collectors.toList());
     Collections.sort(sortedPerson, new Comparator<Person>() {
       public int compare(Person obj1, Person obj2) {
         return obj1.getCreatedAt().compareTo(obj2.getCreatedAt());
