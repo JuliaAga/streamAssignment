@@ -1,8 +1,10 @@
 package tasks;
 
+import common.Area;
 import common.Person;
 import common.Task;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -11,6 +13,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static java.util.function.Function.identity;
 
 /*
 А теперь о горьком
@@ -21,57 +25,53 @@ import java.util.stream.Stream;
 P.S. функции тут разные и рабочие (наверное), но вот их понятность и эффективность страдает (аж пришлось писать комменты)
 P.P.S Здесь ваши правки желательно прокомментировать (можно на гитхабе в пулл реквесте)
  */
-//TODO будем считать что это класс вспомогательных методов
+/*Предположим, что это класс-вспомогательная библиотека, для получения разных статистик*/
 public class Task8 implements Task {
 
     private long count;
-    //TODO переменные вынесены из метода check
-    boolean codeSmellsGood = false;
-    boolean reviewerDrunk = true;
 
     //Не хотим выдывать апи нашу фальшивую персону, поэтому конвертим начиная со второй
 
-    //TODO Функция получает персон, расчитывая, что первой в колекции идет фальшивая персона
-    public List<String> getNames(List<Person> persons) {
-        if (persons.size() == 0) {
-            return Collections.emptyList();
-        }
-        persons.remove(0);
-        return persons.stream().map(Person::getFirstName).collect(Collectors.toList());
+    /*
+    т.к. нет задачи что-то удалять, быстрее просто пропустить.
+    Название изменено, чтобы соответствовало результату:
+    почему класс должен знать, что первая персона фальшивая? Думаю это знает внешний мир, который вызывает метод -
+    есть фальшивая - вызовет этот, нет фальшивой - сделать другой.
+    Или сделать одну функцию - но передавать флаг необходимости выкинуть первую?
+
+     */
+    public List<String> getPersonsFirstNamesWithoutFirst(List<Person> persons) {
+        return persons.stream().skip(1).map(Person::getFirstName).collect(Collectors.toList());
     }
 
     //ну и различные имена тоже хочется
-    public Set<String> getDifferentNames(List<Person> persons) {
-        return getNames(persons).stream().distinct().collect(Collectors.toSet());
+    /*
+    А здесь есть задача выкинуть первую? Если есть - можно просто использовать функцию, определенную выше;
+    но так как этого явно не задано, то реализация такая.
+    Distinct не нужен был, т.к. set и так хранить только различные значения
+     */
+    public Set<String> getDistinctNames(List<Person> persons) {
+        /*
+        если без первой то
+        return new HashSet<>(getPersonsFirstNamesWithoutFirst(persons);
+         */
+        return persons.stream().map(Person::getFirstName).collect(Collectors.toSet());
     }
 
     //Для фронтов выдадим полное имя, а то сами не могут
-    //TODO здесь имя функции лучше сменить чтобы отражало реально назначение метода
-    public String convertPersonToString(Person person) {
-        String result = "";
-        if (person.getSecondName() != null) {
-            result += person.getSecondName();
-        }
-
-        if (person.getFirstName() != null) {
-            result += " " + person.getFirstName();
-        }
-
-        if (person.getSecondName() != null) {
-            result += " " + person.getSecondName();
-        }
-        return result;
+    /*Вообще наверно все методы можно сделать статичными, потому что они не зависят от конкретного объекта, а все только
+    выполняют какие-то действия с входными данными
+    */
+    public static String getPersonFullName(Person person) {
+        return Stream.of(person.getFirstName(), person.getMiddleName(), person.getSecondName())
+                .filter(s -> s != null && !s.isEmpty())
+                .collect(Collectors.joining(" "));
     }
 
     // словарь id персоны -> ее имя
-    //TODO название метода не соответствует назначению
-    public Map<Integer, String> getPersonNames(Collection<Person> persons) {
-        Map<Integer, String> map = new HashMap<>(1);
-        for (Person person : persons) {
-            if (!map.containsKey(person.getId())) {
-                map.put(person.getId(), convertPersonToString(person));
-            }
-        }
+
+    public Map<Integer, String> getPersonNamesMap(Collection<Person> persons) {
+        Map<Integer, String> map = persons.stream().collect(Collectors.toMap(Person::getId, Task8::getPersonFullName));
         return map;
     }
 
@@ -99,6 +99,22 @@ public class Task8 implements Task {
     @Override
     public boolean check() {
         System.out.println("Слабо дойти до сюда и исправить Fail этой таски?");
-        return codeSmellsGood || reviewerDrunk;
+        /*не уверена, что хочется оставлять объявление этих переменных тут. Может быть здесь сделать логику
+        - внешний мир вызывает какие-то функции, функции по итогам меняют их,
+         а затем проверяется состояние объекта, методом чек?
+         */
+        /*boolean codeSmellsGood = false;
+        boolean reviewerDrunk = true;
+        return codeSmellsGood || reviewerDrunk;*/
+        List<Person> persons = List.of(
+                new Person(1, "Oleg", Instant.now()),
+                new Person(2, "Vasya", Instant.now()),
+                new Person(2, "Vasya", Instant.now())
+        );
+        persons.get(2).setSecondName("Popov");
+
+        return getPersonsFirstNamesWithoutFirst(persons).equals(List.of("Vasya", "Vasya"))
+                && getDistinctNames(persons).equals(Set.of("Vasya", "Oleg"))
+                && getPersonFullName(persons.get(2)).equals("Vasya Popov");
     }
 }
