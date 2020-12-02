@@ -5,15 +5,11 @@ import common.Person;
 import common.Task;
 
 import java.time.Instant;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.Collections.disjoint;
 import static java.util.function.Function.identity;
 
 /*
@@ -28,7 +24,6 @@ P.P.S Здесь ваши правки желательно прокоммент
 /*Предположим, что это класс-вспомогательная библиотека, для получения разных статистик*/
 public class Task8 implements Task {
 
-    private long count;
 
     //Не хотим выдывать апи нашу фальшивую персону, поэтому конвертим начиная со второй
 
@@ -76,45 +71,48 @@ public class Task8 implements Task {
     }
 
     // есть ли совпадающие в двух коллекциях персоны?
-    //TODO здесь наверняка есть более удобный метод
+    /* а может тут надо было еще возвращать само совподение, если есть?*/
+
     public boolean hasSamePersons(Collection<Person> persons1, Collection<Person> persons2) {
-        boolean has = false;
-        for (Person person1 : persons1) {
-            for (Person person2 : persons2) {
-                if (person1.equals(person2)) {
-                    has = true;
-                }
-            }
-        }
-        return has;
+
+        return !disjoint(persons1, persons2);
     }
 
-    //TODO сейчас не используется, считаю что метод здесь не нужен по логике. вместо отдельного счетчика можно использовать count
+    //Метод не вписывается, т.к. остальные работают с коллекциями персон
+    //и зачем тогда count вынесен в переменные класса непонятно
     public long countEven(Stream<Integer> numbers) {
-        count = 0;
-        numbers.filter(num -> num % 2 == 0).forEach(num -> count++);
-        return count;
+        return numbers.filter(num -> num % 2 == 0).count();
     }
 
     @Override
     public boolean check() {
-        System.out.println("Слабо дойти до сюда и исправить Fail этой таски?");
+        // System.out.println("Слабо дойти до сюда и исправить Fail этой таски?");
         /*не уверена, что хочется оставлять объявление этих переменных тут. Может быть здесь сделать логику
         - внешний мир вызывает какие-то функции, функции по итогам меняют их,
          а затем проверяется состояние объекта, методом чек?
          */
-        /*boolean codeSmellsGood = false;
+        boolean codeSmellsGood = false;
         boolean reviewerDrunk = true;
-        return codeSmellsGood || reviewerDrunk;*/
+
         List<Person> persons = List.of(
                 new Person(1, "Oleg", Instant.now()),
                 new Person(2, "Vasya", Instant.now()),
-                new Person(2, "Vasya", Instant.now())
+                new Person(3, "Vasya", Instant.now())
         );
         persons.get(2).setSecondName("Popov");
+        Map<Integer, String> mapForCheck = Map.of(1, "Oleg", 2, "Vasya", 3, "Vasya Popov");
+        List<Person> personsForCommon = List.of(
+                new Person(4, "Grek", Instant.now()),
+                new Person(2, "Vasya", Instant.now())
+        );
 
-        return getPersonsFirstNamesWithoutFirst(persons).equals(List.of("Vasya", "Vasya"))
+        if (getPersonsFirstNamesWithoutFirst(persons).equals(List.of("Vasya", "Vasya"))
                 && getDistinctNames(persons).equals(Set.of("Vasya", "Oleg"))
-                && getPersonFullName(persons.get(2)).equals("Vasya Popov");
+                && getPersonFullName(persons.get(2)).equals("Vasya Popov")
+                && getPersonNamesMap(persons).equals(mapForCheck)
+                && hasSamePersons(persons, personsForCommon)
+        ) return reviewerDrunk;
+        else
+            return codeSmellsGood;
     }
 }
