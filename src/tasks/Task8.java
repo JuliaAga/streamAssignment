@@ -1,16 +1,16 @@
 package tasks;
 
+import common.Area;
 import common.Person;
 import common.Task;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.time.Instant;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static java.util.Collections.disjoint;
+import static java.util.function.Function.identity;
 
 /*
 А теперь о горьком
@@ -21,77 +21,98 @@ import java.util.stream.Stream;
 P.S. функции тут разные и рабочие (наверное), но вот их понятность и эффективность страдает (аж пришлось писать комменты)
 P.P.S Здесь ваши правки желательно прокомментировать (можно на гитхабе в пулл реквесте)
  */
+/*Предположим, что это класс-вспомогательная библиотека, для получения разных статистик*/
 public class Task8 implements Task {
 
-  private long count;
 
-  //Не хотим выдывать апи нашу фальшивую персону, поэтому конвертим начиная со второй
-  public List<String> getNames(List<Person> persons) {
-    if (persons.size() == 0) {
-      return Collections.emptyList();
-    }
-    persons.remove(0);
-    return persons.stream().map(Person::getFirstName).collect(Collectors.toList());
-  }
+    //Не хотим выдывать апи нашу фальшивую персону, поэтому конвертим начиная со второй
 
-  //ну и различные имена тоже хочется
-  public Set<String> getDifferentNames(List<Person> persons) {
-    return getNames(persons).stream().distinct().collect(Collectors.toSet());
-  }
+    /*
+    т.к. нет задачи что-то удалять, быстрее просто пропустить.
+    Название изменено, чтобы соответствовало результату:
+    почему класс должен знать, что первая персона фальшивая? Думаю это знает внешний мир, который вызывает метод -
+    есть фальшивая - вызовет этот, нет фальшивой - сделать другой.
+    Или сделать одну функцию - но передавать флаг необходимости выкинуть первую?
 
-  //Для фронтов выдадим полное имя, а то сами не могут
-  public String convertPersonToString(Person person) {
-    String result = "";
-    if (person.getSecondName() != null) {
-      result += person.getSecondName();
+     */
+    public List<String> getPersonsFirstNamesWithoutFirst(List<Person> persons) {
+        return persons.stream().skip(1).map(Person::getFirstName).collect(Collectors.toList());
     }
 
-    if (person.getFirstName() != null) {
-      result += " " + person.getFirstName();
+    //ну и различные имена тоже хочется
+    /*
+    А здесь есть задача выкинуть первую? Если есть - можно просто использовать функцию, определенную выше;
+    но так как этого явно не задано, то реализация такая.
+    Distinct не нужен был, т.к. set и так хранить только различные значения
+     */
+    public Set<String> getDistinctNames(List<Person> persons) {
+        /*
+        если без первой то
+        return new HashSet<>(getPersonsFirstNamesWithoutFirst(persons);
+         */
+        return persons.stream().map(Person::getFirstName).collect(Collectors.toSet());
     }
 
-    if (person.getSecondName() != null) {
-      result += " " + person.getSecondName();
+    //Для фронтов выдадим полное имя, а то сами не могут
+    /*Вообще наверно все методы можно сделать статичными, потому что они не зависят от конкретного объекта, а все только
+    выполняют какие-то действия с входными данными
+    */
+    public static String getPersonFullName(Person person) {
+        return Stream.of(person.getFirstName(), person.getMiddleName(), person.getSecondName())
+                .filter(s -> s != null && !s.isEmpty())
+                .collect(Collectors.joining(" "));
     }
-    return result;
-  }
 
-  // словарь id персоны -> ее имя
-  public Map<Integer, String> getPersonNames(Collection<Person> persons) {
-    Map<Integer, String> map = new HashMap<>(1);
-    for (Person person : persons) {
-      if (!map.containsKey(person.getId())) {
-        map.put(person.getId(), convertPersonToString(person));
-      }
+    // словарь id персоны -> ее имя
+
+    public Map<Integer, String> getPersonNamesMap(Collection<Person> persons) {
+        Map<Integer, String> map = persons.stream().collect(Collectors.toMap(Person::getId, Task8::getPersonFullName));
+        return map;
     }
-    return map;
-  }
 
-  // есть ли совпадающие в двух коллекциях персоны?
-  public boolean hasSamePersons(Collection<Person> persons1, Collection<Person> persons2) {
-    boolean has = false;
-    for (Person person1 : persons1) {
-      for (Person person2 : persons2) {
-        if (person1.equals(person2)) {
-          has = true;
-        }
-      }
+    // есть ли совпадающие в двух коллекциях персоны?
+    /* а может тут надо было еще возвращать само совподение, если есть?*/
+
+    public boolean hasSamePersons(Collection<Person> persons1, Collection<Person> persons2) {
+
+        return !disjoint(persons1, persons2);
     }
-    return has;
-  }
 
-  //...
-  public long countEven(Stream<Integer> numbers) {
-    count = 0;
-    numbers.filter(num -> num % 2 == 0).forEach(num -> count++);
-    return count;
-  }
+    //Метод не вписывается, т.к. остальные работают с коллекциями персон
+    //и зачем тогда count вынесен в переменные класса непонятно
+    public long countEven(Stream<Integer> numbers) {
+        return numbers.filter(num -> num % 2 == 0).count();
+    }
 
-  @Override
-  public boolean check() {
-    System.out.println("Слабо дойти до сюда и исправить Fail этой таски?");
-    boolean codeSmellsGood = false;
-    boolean reviewerDrunk = false;
-    return codeSmellsGood || reviewerDrunk;
-  }
+    @Override
+    public boolean check() {
+        // System.out.println("Слабо дойти до сюда и исправить Fail этой таски?");
+        /*не уверена, что хочется оставлять объявление этих переменных тут. Может быть здесь сделать логику
+        - внешний мир вызывает какие-то функции, функции по итогам меняют их,
+         а затем проверяется состояние объекта, методом чек?
+         */
+        boolean codeSmellsGood = false;
+        boolean reviewerDrunk = true;
+
+        List<Person> persons = List.of(
+                new Person(1, "Oleg", Instant.now()),
+                new Person(2, "Vasya", Instant.now()),
+                new Person(3, "Vasya", Instant.now())
+        );
+        persons.get(2).setSecondName("Popov");
+        Map<Integer, String> mapForCheck = Map.of(1, "Oleg", 2, "Vasya", 3, "Vasya Popov");
+        List<Person> personsForCommon = List.of(
+                new Person(4, "Grek", Instant.now()),
+                new Person(2, "Vasya", Instant.now())
+        );
+
+        if (getPersonsFirstNamesWithoutFirst(persons).equals(List.of("Vasya", "Vasya"))
+                && getDistinctNames(persons).equals(Set.of("Vasya", "Oleg"))
+                && getPersonFullName(persons.get(2)).equals("Vasya Popov")
+                && getPersonNamesMap(persons).equals(mapForCheck)
+                && hasSamePersons(persons, personsForCommon)
+        ) return reviewerDrunk;
+        else
+            return codeSmellsGood;
+    }
 }
